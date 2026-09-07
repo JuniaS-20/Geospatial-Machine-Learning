@@ -22,7 +22,6 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-import joblib
 import numpy as np
 
 from src.config import (
@@ -49,16 +48,15 @@ from src.models import tune_and_select_model
 from src.outputs import create_legend_json, create_qml, save_metadata, save_model
 from src.raster_prep import inspect_existing_stack, prepare_feature_stack
 from src.spatial_validation import (
-    ensure_development_class_support,
-    holdout_class_coverage,
     class_block_report,
     create_label_blind_holdout,
     create_spatial_blocks,
+    ensure_development_class_support,
+    holdout_class_coverage,
     make_spatial_cv_splits,
 )
 from src.training_data import extract_training_dataset
 from src.utils import save_json
-
 
 # =============================================================================
 # USER CONFIGURATION

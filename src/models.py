@@ -9,7 +9,7 @@ from sklearn.base import clone
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectFromModel
-from sklearn.metrics import make_scorer, balanced_accuracy_score, f1_score
+from sklearn.metrics import balanced_accuracy_score, f1_score, make_scorer
 from sklearn.model_selection import RandomizedSearchCV, cross_validate
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler

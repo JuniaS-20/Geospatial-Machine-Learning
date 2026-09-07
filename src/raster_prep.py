@@ -6,13 +6,13 @@ specific upstream product (e.g. MAJA/MUSCATE, Sen2Cor SCL, custom binary mask).
 """
 from __future__ import annotations
 
+import os
 import re
 import shutil
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack
 from pathlib import Path
-import xml.etree.ElementTree as ET
-import os
 
 os.environ.pop("PROJ_LIB", None)
 import geopandas as gpd
