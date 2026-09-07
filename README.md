@@ -1,104 +1,144 @@
-# Land Cover Classification with RandomForest (Python)
+# Geospatial Machine Learning — Spatially Validated Sentinel-2 Land-Cover Classification
 
-## 🧠 Overview
+A reproducible geospatial machine-learning pipeline for Sentinel-2 land-cover
+classification, with label-blind spatial hold-out validation, development-only spatial
+cross-validation and hyperparameter tuning, feature experiments, model baselines,
+window-based raster inference, uncertainty-aware diagnostic layers, automated tests,
+and GIS-ready outputs.
 
-This project performs land cover classification using a multiband raster (e.g., Sentinel-2) and labeled points in a shapefile. It uses a `RandomForestClassifier` with preprocessing, cross-validation, and applies the model to the full image (and optionally to a batch of rasters). The output includes classified raster, preview image, QML style, and a GeoJSON legend.
+## Why the validation design matters
 
----
+Random pixel splits are often too optimistic for remote-sensing data because nearby
+samples are spatially autocorrelated. This project therefore groups training samples
+into spatial blocks. A fixed fraction of blocks is selected **once** for the final test
+set using only block IDs and a random seed; class labels are not an input to that
+selection. Feature experiments, model comparison and hyperparameter tuning use only
+the remaining development blocks. The final spatial hold-out is evaluated once.
 
-## 📦 Requirements
+The code deliberately does **not** re-select a hold-out because some classes are absent
+from it. Such absences are reported as a data-coverage limitation. If a class is absent
+from development data, the run stops and the training design must be improved rather
+than adapting the test set after seeing its labels.
 
-* Python >= 3.8
-* rasterio
-* geopandas
-* numpy
-* matplotlib
-* seaborn
-* tqdm
-* scikit-learn
-* scipy
-* joblib
+## Models and feature experiments
 
-Install dependencies:
+The development workflow compares a `DummyClassifier` baseline with tuned Random
+Forest and SVM models. SVM scaling occurs inside an sklearn `Pipeline`, preventing
+pre-validation scaling leakage. Hyperparameters are tuned with `RandomizedSearchCV`
+using the same spatial folds.
+
+Three feature experiments are available:
+
+- **A — raw spectral bands**: B02, B03, B04, B08, B11, B12 (plus optional red-edge bands if present).
+- **B — bands + derived features**: NDVI, NDWI, NDBI, NDMI, NBR, supported red-edge indices and spectral ratios.
+- **C — embedded selection**: feature selection is fitted inside each CV fold via `SelectFromModel`; it is never fitted once on the complete dataset before validation.
+
+Red-edge indices are computed only if their required Sentinel-2 red-edge bands are
+actually present.
+
+## Imagery preparation
+
+The preprocessing module recursively discovers scenes under `data/`, checks required
+bands, aligns resolutions/CRS, optionally applies a product-specific cloud mask to each
+scene **before** mosaicking, mosaics overlapping scenes, clips/masks to the study area,
+and writes one multiband feature stack.
+
+Cloud-mask semantics differ by processing chain. The pipeline therefore refuses to
+guess them: cloud masking is disabled by default and must be explicitly configured from
+the metadata/documentation of the imagery product.
+
+
+### Temporal and phenological consistency
+
+The reference experiment combines two Sentinel-2 Level-2A products acquired on different dates and from adjacent MGRS tiles (`T35LNG` in January 2023 and `T35LNH` in July 2023). 
+Although both scenes are harmonized spatially before classification, the temporal gap may introduce differences related to seasonality, vegetation phenology, soil moisture,
+ atmospheric conditions, or land-cover dynamics. Consequently, some spectral discontinuities may reflect acquisition-date effects rather than land-cover differences alone. 
+ A future extension of the workflow would use temporally closer acquisitions, multi-temporal features, or explicit temporal harmonization to better separate spatial land-cover variability from seasonal effects.
+
+## Training data
+
+The default path is `data/Tdata/Training_data.shp`, with `label` as target. The project
+notes describe the fields `id`, `Classe`, `label`, and `Name`; `Classe`/`Name` are used
+as human-readable names when available. Point, MultiPoint, Polygon and MultiPolygon
+training geometries are supported. Polygon pixels are deterministically capped per
+feature to reduce uncontrolled pseudo-replication.
+
+The absolute number of training objects is not sufficient to judge adequacy. The
+pipeline writes the number of samples and, more importantly, the number of independent
+spatial blocks represented by each class. Geographic coverage per class should guide
+additional sampling.
+
+## Inference and uncertainty language
+
+Full-raster prediction is performed with `rasterio` windows, so the complete feature
+stack is not loaded into memory. Outputs include raw classification, maximum model
+confidence, `1 - confidence`, normalized Shannon entropy and optional per-class
+`predict_proba` scores.
+
+These are **confidence / predictive-uncertainty proxies**. They are not described as
+Bayesian uncertainty or calibrated probabilities. If probability calibration is added
+in a future version, it should itself respect the spatial validation design.
+
+## Post-processing
+
+The old median filter has been replaced by a categorical **majority (mode) filter**.
+Land-cover IDs are nominal classes, so a numeric median imposes an unjustified ordering
+on class codes. Raw and post-processed maps are both retained and evaluated on the same
+frozen hold-out. The hold-out result is not used to tune the filter size.
+
+## Repository structure
+
+```text
+Geospatial-Machine-Learning/
+├── spatial_rf_landcover_classification_V2.py   # main executable
+├── src/
+│   ├── config.py
+│   ├── raster_prep.py
+│   ├── features.py
+│   ├── training_data.py
+│   ├── spatial_validation.py
+│   ├── models.py
+│   ├── evaluation.py
+│   ├── inference.py
+│   ├── outputs.py
+│   └── utils.py
+├── tests/
+├── .github/workflows/tests.yml
+├── data/
+├── outputs/
+├── requirements.txt
+├── pyproject.toml
+└── .gitignore
+```
+
+## Run
 
 ```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
+pytest
+python spatial_rf_landcover_classification_V2.py
 ```
 
----
+Edit the **USER CONFIGURATION** section at the top of the main script. By default,
+imagery is searched recursively under `data/`, the AOI is expected under `data/ZOI/`,
+and `Training_data.shp` under `data/Tdata/`.
 
-## 🚀 How it works
+## Outputs
 
-1. **Read training shapefile and multiband raster**
-2. **Extract features (spectral bands) from raster at labeled points**
-3. **Preprocess features with standard scaling**
-4. **Train and evaluate a Random Forest model** (with 5-fold stratified cross-validation)
-5. **Apply the trained model to classify the full raster image**
-6. **Apply median filtering to reduce "salt-and-pepper" effect**
-7. **Export results**:
+The `outputs/` directory contains prepared feature stacks, raw and post-processed land
+cover rasters, confidence/entropy diagnostics, class score rasters, confusion matrices,
+per-class metrics, feature/model comparison JSON, the fitted model, reproducibility
+metadata, QGIS styling and a class legend.
 
-   * Classified raster (`.tif`)
-   * Preview image (`.png`)
-   * QGIS QML style file (`.qml`)
-   * GeoJSON legend (`.geojson`)
-   * Saved model and scaler (`.joblib`)
+## Methodological limits to report
 
----
-
-## 🗃️ Inputs
-
-* `labels.shp` — Shapefile with labeled point geometries and a `label` column.
-* `*.vrt` or `*.tif` — Multiband raster(s) for classification.
-
----
-
-## 🧪 Outputs
-
-* `classified_*.tif` — Classified raster.
-* `classified_RF_preview.png` — PNG visualization.
-* `classified_RF.qml` — QGIS styling file.
-* `classified_RF_legend.geojson` — Vector legend.
-* `trained_model_RF.joblib` / `scaler_RF.joblib` — Trained model and scaler.
-
----
-
-## 📁 Batch Processing
-
-To classify multiple rasters, simply add their paths to the `image_paths` list.
-
-```python
-image_paths = [
-    "raster1.vrt",
-    "raster2.vrt",
-    "raster3.vrt"
-]
-```
-
-Each will be classified and exported with its own output files.
-
----
-
-## 📌 Notes
-
-* A 3x3 median filter is applied to reduce classification noise.
-* The QML file enables direct style loading in QGIS.
-* The `label` values in the shapefile must correspond to integer class IDs.
-
----
-
-## 📜 License
-
-Feel free to use and adapt.
-
----
-
-
-## Contributions
-Contributions to this repository are welcome. If you find any bugs or have suggestions for improvements, feel free to submit an issue or pull request.
-
-land-cover-classification
-
-## 👤 Author
-
-Developed by Junior Muyumba as part of land cover mapping pipeline automation.
-Feel free to contribute or fork!
+Spatial block size is a scientific hyperparameter and should be justified from the
+spatial autocorrelation scale, sensor resolution and intended transfer distance; 1 km
+is only a configurable default. A random block hold-out ensures disjoint groups but is
+not identical to transfer to a different region. For stronger geographic extrapolation
+claims, use a pre-declared regional hold-out and/or a positive spatial gap. Training
+reference quality, temporal mismatch, class imbalance, cloud/shadow treatment and
+land-cover heterogeneity remain important sources of error.
