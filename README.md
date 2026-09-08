@@ -1,4 +1,4 @@
-# Geospatial Machine Learning — Spatially Validated Sentinel-2 Land-Cover Classification
+ # Geospatial Machine Learning — Spatially Validated Sentinel-2 Land-Cover Classification
 
 A reproducible geospatial machine-learning pipeline for Sentinel-2 land-cover
 classification, with label-blind spatial hold-out validation, development-only spatial
@@ -48,12 +48,11 @@ guess them: cloud masking is disabled by default and must be explicitly configur
 the metadata/documentation of the imagery product.
 
 
-### Temporal and phenological consistency
+> *Note:* The example dataset uses two adjacent Sentinel-2 Level-2A tiles
+> acquired in January and July 2023. These scenes are provided for workflow
+> demonstration purposes; users can run the pipeline with their own imagery
+> and training data.
 
-The reference experiment combines two Sentinel-2 Level-2A products acquired on different dates and from adjacent MGRS tiles (`T35LNG` in January 2023 and `T35LNH` in July 2023). 
-Although both scenes are harmonized spatially before classification, the temporal gap may introduce differences related to seasonality, vegetation phenology, soil moisture,
- atmospheric conditions, or land-cover dynamics. Consequently, some spectral discontinuities may reflect acquisition-date effects rather than land-cover differences alone. 
- A future extension of the workflow would use temporally closer acquisitions, multi-temporal features, or explicit temporal harmonization to better separate spatial land-cover variability from seasonal effects.
 
 ## Training data
 
