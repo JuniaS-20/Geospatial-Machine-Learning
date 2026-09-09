@@ -118,7 +118,7 @@ python -m venv .venv
 # Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
 pytest
-python spatial_rf_landcover_classification_V2.py
+python Geospatial-Machine-Learning.py
 ```
 
 Edit the **USER CONFIGURATION** section at the top of the main script. By default,
