@@ -89,7 +89,7 @@ frozen hold-out. The hold-out result is not used to tune the filter size.
 
 ```text
 Geospatial-Machine-Learning/
-├── spatial_rf_landcover_classification_V2.py   # main executable
+├── Geospatial-Machine-Learning.py  # main executable
 ├── src/
 │   ├── config.py
 │   ├── raster_prep.py
